@@ -10,10 +10,12 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+app.set("trust proxy", 1);
+
 // CORS
 app.use(
     cors({
-        origin: "http://localhost:5173",
+        origin: "https://salesforce-crud-app-1.onrender.com",
         credentials: true
     })
 );
@@ -28,8 +30,8 @@ app.use(
         saveUninitialized: false,
         cookie: {
             httpOnly: true,
-            secure: false,
-            sameSite: "lax",
+            secure: true,
+            sameSite: "none",
             maxAge: 24 * 60 * 60 * 1000
         }
     })
