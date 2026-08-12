@@ -4,6 +4,8 @@ const dotenv = require("dotenv");
 const session = require("express-session");
 const axios = require("axios");
 const crypto = require("crypto");
+const { createClient } = require("redis");
+const { RedisStore } = require("connect-redis");
 
 dotenv.config();
 
@@ -22,9 +24,28 @@ app.use(
 
 app.use(express.json());
 
+
+const redisClient = createClient({
+    url: process.env.REDIS_URL
+});
+
+redisClient.on("error", (err) => {
+    console.error("Redis error:", err);
+});
+
+redisClient.connect()
+    .then(() => console.log("Redis connected successfully"))
+    .catch((err) => console.error("Redis connection failed:", err));
+
+const redisStore = new RedisStore({
+    client: redisClient,
+    prefix: "salesforce:"
+});
+
 // Session
 app.use(
     session({
+        store: redisStore,
         secret: process.env.SESSION_SECRET,
         resave: false,
         saveUninitialized: false,
