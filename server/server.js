@@ -170,7 +170,7 @@ app.get("/oauth/callback", async (req, res) => {
             console.log("Session saved successfully!");
             console.log("===================================\n");
 
-            res.redirect("http://localhost:5173/");
+            res.redirect("https://salesforce-crud-app-1.onrender.com/");
         });
     } catch (error) {
         console.error(
