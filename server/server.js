@@ -52,18 +52,21 @@ if (process.env.NODE_ENV === "production") {
 
 // Session
 // 1. Change this to 'true' instead of 1 to trust all Render proxies
-app.set("trust proxy", true);
+
+
+app.set("trust proxy", 1);
 
 app.use(
     session({
-        // Remove redisStore for now to guarantee it's not a database issue
-        secret: process.env.SESSION_SECRET || "fallback_secret",
-        resave: true,             // <--- Changed to true
-        saveUninitialized: true,  // <--- Changed to true
+        store: redisStore,
+        secret: process.env.SESSION_SECRET,
+        resave: false,
+        saveUninitialized: false,
+
         cookie: {
             httpOnly: true,
-            secure: true,         // <--- Hardcoded to true
-            sameSite: "none",     // <--- Required for cross-domain
+            secure: true,
+            sameSite: "none",
             maxAge: 24 * 60 * 60 * 1000
         }
     })
