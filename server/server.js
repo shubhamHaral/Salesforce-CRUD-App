@@ -102,17 +102,10 @@ app.use(
         cookie: {
             httpOnly: true,
             secure: isProduction,
-
             sameSite: isProduction
                 ? "none"
                 : "lax",
-
-            domain: isProduction
-                ? ".onrender.com"
-                : undefined,
-
             path: "/",
-
             maxAge: 24 * 60 * 60 * 1000
         }
     })
