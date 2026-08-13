@@ -12,7 +12,7 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.set("trust proxy", 1);
+// app.set("trust proxy", 1);
 
 // CORS
 app.use(
@@ -24,40 +24,50 @@ app.use(
 
 app.use(express.json());
 
+let redisStore = undefined;
 
-const redisClient = createClient({
-    url: process.env.REDIS_URL
-});
+if (process.env.NODE_ENV === "production") {
+    const redisClient = createClient({
+        url: process.env.REDIS_URL
+    });
 
-redisClient.on("error", (err) => {
-    console.error("Redis error:", err);
-});
+    redisClient.on("error", (err) => {
+        console.error("Redis error:", err);
+    });
 
-redisClient.connect()
-    .then(() => console.log("Redis connected successfully"))
-    .catch((err) => console.error("Redis connection failed:", err));
+    redisClient.connect()
+        .then(() => console.log("Redis connected successfully"))
+        .catch((err) => console.error("Redis connection failed:", err));
 
-const redisStore = new RedisStore({
-    client: redisClient,
-    prefix: "salesforce:"
-});
+    redisStore = new RedisStore({
+        client: redisClient,
+        prefix: "salesforce:"
+    });
+}
+
+// const redisStore = new RedisStore({
+//     client: redisClient,
+//     prefix: "salesforce:"
+// });
 
 // Session
+// 1. Change this to 'true' instead of 1 to trust all Render proxies
+app.set("trust proxy", true);
+
 app.use(
     session({
-        store: redisStore,
-        secret: process.env.SESSION_SECRET,
-        resave: false,
-        saveUninitialized: false,
+        // Remove redisStore for now to guarantee it's not a database issue
+        secret: process.env.SESSION_SECRET || "fallback_secret",
+        resave: true,             // <--- Changed to true
+        saveUninitialized: true,  // <--- Changed to true
         cookie: {
             httpOnly: true,
-            secure: true,
-            sameSite: "lax",
+            secure: true,         // <--- Hardcoded to true
+            sameSite: "none",     // <--- Required for cross-domain
             maxAge: 24 * 60 * 60 * 1000
         }
     })
 );
-
 // Test
 app.get("/", (req, res) => {
     res.send("Salesforce CRUD Backend is running!");
@@ -100,6 +110,7 @@ app.get("/auth/login", (req, res) => {
                 code_challenge_method: "S256"
             });
 
+            console.log("CALLBACK URL BEING SENT:", process.env.SALESFORCE_CALLBACK_URL);
             const loginUrl =
                 `${process.env.SALESFORCE_LOGIN_URL}` +
                 `/services/oauth2/authorize?${params.toString()}`;
