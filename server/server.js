@@ -24,20 +24,45 @@ app.use(
 
 app.use(express.json());
 
-let redisStore = undefined;
+// let redisStore = undefined;
+
+// if (process.env.NODE_ENV === "production") {
+//     const redisClient = createClient({
+//         url: process.env.REDIS_URL
+//     });
+
+//     redisClient.on("error", (err) => {
+//         console.error("Redis error:", err);
+//     });
+
+//     redisClient.connect()
+//         .then(() => console.log("Redis connected successfully"))
+//         .catch((err) => console.error("Redis connection failed:", err));
+
+//     redisStore = new RedisStore({
+//         client: redisClient,
+//         prefix: "salesforce:"
+//     });
+// }
+
+let redisClient = null;
+let redisStore = null;
 
 if (process.env.NODE_ENV === "production") {
-    const redisClient = createClient({
+
+    if (!process.env.REDIS_URL) {
+        throw new Error(
+            "REDIS_URL is missing in production"
+        );
+    }
+
+    redisClient = createClient({
         url: process.env.REDIS_URL
     });
 
     redisClient.on("error", (err) => {
         console.error("Redis error:", err);
     });
-
-    redisClient.connect()
-        .then(() => console.log("Redis connected successfully"))
-        .catch((err) => console.error("Redis connection failed:", err));
 
     redisStore = new RedisStore({
         client: redisClient,
@@ -54,19 +79,35 @@ if (process.env.NODE_ENV === "production") {
 // 1. Change this to 'true' instead of 1 to trust all Render proxies
 
 
+const isProduction = process.env.NODE_ENV === "production";
+
 app.set("trust proxy", 1);
 
 app.use(
     session({
-        store: redisStore,
+        ...(isProduction
+            ? { store: redisStore }
+            : {}),
+
+        name: "salesforce.sid",
+
         secret: process.env.SESSION_SECRET,
+
         resave: false,
+
         saveUninitialized: false,
+
+        proxy: isProduction,
 
         cookie: {
             httpOnly: true,
-            secure: true,
-            sameSite: "none",
+
+            secure: isProduction,
+
+            sameSite: isProduction
+                ? "none"
+                : "lax",
+
             maxAge: 24 * 60 * 60 * 1000
         }
     })
@@ -95,6 +136,11 @@ app.get("/auth/login", (req, res) => {
 
         // Save verifier in session
         req.session.codeVerifier = codeVerifier;
+        
+        console.log(
+            "Saved PKCE verifier:",
+            !!req.session.codeVerifier
+        );
 
         req.session.save((err) => {
             if (err) {
